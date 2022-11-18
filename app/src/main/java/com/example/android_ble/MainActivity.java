@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView rv_Chat;
     private Rv_BleChatAdapter adapter;
     private LinearLayoutManager linearLayoutManager;
-
+    private int ble_DataCNT = 0;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -91,12 +91,15 @@ public class MainActivity extends AppCompatActivity {
         adapter = new Rv_BleChatAdapter();
         rv_Chat.setAdapter(adapter);
 
+
         btn_send.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 if (BTstate) {
                     if(et_chat.getText().toString().length()>0){
                         sendData(et_chat.getText().toString());
+                        adapter.addChat("Android : "+et_chat.getText().toString());
+                        adapter.notifyDataSetChanged();
                     }else{
                         Toast.makeText(getApplicationContext(),"입력을 해주세요",Toast.LENGTH_SHORT).show();
                     }
@@ -150,6 +153,8 @@ public class MainActivity extends AppCompatActivity {
             final String action = intent.getAction();
             if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) //기기연결이 성공했을때
             {
+                //보내기 버튼 비활성화 -> 연결시 딜레이가 생기기 때문에 연결이 완료된 후에 다시 활성화를 시켜줌
+                btn_send.setClickable(false);
                 connectUI();
             } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) //기기가 연결되어있지 않을때
             {
@@ -163,10 +168,15 @@ public class MainActivity extends AppCompatActivity {
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) //값을 찾았을때 들어옴
             {
                 if (intent.getStringExtra(BluetoothLeService.EXTRA_DATA) != null) {
-                    String getData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
-                    adapter.addChat(getData);
-                    adapter.notifyDataSetChanged();
-                    Log.w("String getData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);", getData);
+                    if(ble_DataCNT>0){
+                        String getData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
+                        Log.w("String getData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);", getData);
+                        adapter.addChat("Bluetooth : "+getData);
+                        adapter.notifyDataSetChanged();
+                    }else{
+                        ble_DataCNT++;
+                    }
+
                 }
             }
         }
@@ -194,6 +204,7 @@ public class MainActivity extends AppCompatActivity {
         tv_State.setText("Bad");
         adapter.clear();
         adapter.notifyDataSetChanged();
+        ble_DataCNT= 0;
     }
 
     //블루투스가 연결 됐을때
@@ -201,6 +212,7 @@ public class MainActivity extends AppCompatActivity {
         layout_Chat.setVisibility(View.VISIBLE);
         layout_pair.setVisibility(View.GONE);
         tv_State.setText("Good");
+        ble_DataCNT= 0;
     }
 
     //GATT UUID필터(bluetoothLeService.java에서 이것만 들어올수 있게)
@@ -237,6 +249,7 @@ public class MainActivity extends AppCompatActivity {
                         mBluetoothLeService.setCharacteristicNotification(characteristic, true);
                     }
                 }, 3000);
+                btn_send.setClickable(true);// 보내기 버튼 활성화
             }
         }
     }
